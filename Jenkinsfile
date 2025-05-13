@@ -11,8 +11,7 @@ pipeline {
       // dummy stage without any when condition
           stage('Dummy Stage') {
             steps {
-                echo '${env.BRANCH_NAME}'
-                echo $env.BRANCH_NAME
+                 echo "BRANCH_NAME: ${env.BRANCH_NAME}"
                 }
              }
 
