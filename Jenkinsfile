@@ -8,9 +8,17 @@ pipeline {
     }
 
     stages {
+      // dummy stage without any when condition
+          stage('Dummy Stage') {
+            steps {
+                echo '${env.BRANCH_NAME}'
+                echo $env.BRANCH_NAME
+                }
+             }
+
         stage('Login to Octopus') {
             when {
-              expression { ${env,BRANCH_NAME} == 'release' }
+              expression { ${env.BRANCH_NAME} == 'release' }
             }
             steps {
                 withCredentials([string(credentialsId: 'octopus-api-key', variable: 'OCTOPUS_API_KEY')]) {
@@ -25,7 +33,7 @@ pipeline {
 
         stage('Sync BUILD_NUMBER Variable') {
             when {
-               expression { ${env,BRANCH_NAME} == 'release' }
+               expression { ${env.BRANCH_NAME} == 'release' }
             }
             steps {
                 withCredentials([string(credentialsId: 'octopus-api-key', variable: 'OCTOPUS_API_KEY')]) {
@@ -76,11 +84,7 @@ pipeline {
             }
         }
 
-        // dummy stage without any when condition
-        stage('Dummy Stage') {
-            steps {
-                echo '${env,BRANCH_NAME}'
-            }
-        }
+        
+        
     }
 }
