@@ -76,7 +76,7 @@ pipeline {
             }
         }
 
-        // Dummy stage without any when condition
+        // dummy stage without any when condition
         stage('Dummy Stage') {
             steps {
                 echo 'This dummy stage runs unconditionally, regardless of the branch.'
