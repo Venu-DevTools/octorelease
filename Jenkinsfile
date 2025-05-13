@@ -11,13 +11,13 @@ pipeline {
       // dummy stage without any when condition
           stage('Dummy Stage') {
             steps {
-                 echo "BRANCH_NAME: ${env.BRANCH_NAME}"
+                 echo "BRANCH_NAME: ${env.GIT_BRANCH}"
                 }
              }
 
         stage('Login to Octopus') {
             when {
-              expression { ${env.BRANCH_NAME} == 'release' }
+              expression { ${env.GIT_BRANCH} == 'release' }
             }
             steps {
                 withCredentials([string(credentialsId: 'octopus-api-key', variable: 'OCTOPUS_API_KEY')]) {
