@@ -10,7 +10,7 @@ pipeline {
     stages {
         stage('Login to Octopus') {
             when {
-                branch 'release'
+              expression { BRANCH_NAME == 'release' }
             }
             steps {
                 withCredentials([string(credentialsId: 'octopus-api-key', variable: 'OCTOPUS_API_KEY')]) {
@@ -25,7 +25,7 @@ pipeline {
 
         stage('Sync BUILD_NUMBER Variable') {
             when {
-                branch 'release'
+               expression { BRANCH_NAME == 'release' }
             }
             steps {
                 withCredentials([string(credentialsId: 'octopus-api-key', variable: 'OCTOPUS_API_KEY')]) {
