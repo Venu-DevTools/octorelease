@@ -1,19 +1,13 @@
 pipeline {
     agent any
-
+ 
     environment {
         OCTOPUS_SERVER = 'https://devtools.octopus.app'
         SPACE_ID       = 'Spaces-162'
         PROJECT_NAME   = 'omega-alpha'
     }
-
+ 
     stages {
-        stage('Dummy Stage') {
-            steps {
-                echo "BRANCH_NAME: ${env.GIT_BRANCH}"
-            }
-        }
-
         stage('Login to Octopus') {
             when {
                 expression { env.GIT_BRANCH == 'origin/release' }
@@ -28,8 +22,8 @@ pipeline {
                 }
             }
         }
-
-        stage('Reset BUILD_NUMBER Variable') {
+ 
+        stage('Sync BUILD_NUMBER Variable') {
             when {
                 expression { env.GIT_BRANCH == 'origin/release' }
             }
@@ -37,22 +31,25 @@ pipeline {
                 withCredentials([string(credentialsId: 'octopus-api-key', variable: 'OCTOPUS_API_KEY')]) {
                     sh '''
                         set -e
-
+ 
+                        # Ensure jq is available
                         if ! command -v jq >/dev/null 2>&1; then
-                            echo "Error: jq is not installed."
+                            echo "Error: jq is not installed. Please install jq on your Jenkins agent."
                             exit 1
                         fi
-
-                        echo "Fetching existing BUILD_NUMBER variables..."
+ 
+                        # 1. List all variables in JSON
                         VAR_JSON=$(octopus project variables list \
                             --project "$PROJECT_NAME" \
                             --space "$SPACE_ID" \
                             --output-format json)
-
+ 
+                        # 2. Extract IDs for all BUILD_NUMBER variables
                         VARIABLE_IDS=$(echo "$VAR_JSON" | jq -r '.[] | select(.Name == "BUILD_NUMBER") | .Id')
-
+ 
+                        # 3. Delete each found BUILD_NUMBER variable
                         if [ -n "$VARIABLE_IDS" ]; then
-                            echo "Deleting existing BUILD_NUMBER variables..."
+                            echo "Found existing BUILD_NUMBER variable(s):"
                             for ID in $VARIABLE_IDS; do
                                 echo " → deleting id=$ID"
                                 octopus project variables delete BUILD_NUMBER \
@@ -62,23 +59,23 @@ pipeline {
                                     --id "$ID" \
                                     --confirm
                             done
-
-                            echo "Waiting for Octopus to release lock on variable set..."
-                            sleep 5
+                        else
+                            echo "No existing BUILD_NUMBER variable found."
                         fi
-
-                        echo "Creating new BUILD_NUMBER = $BUILD_NUMBER"
-                        octopus project variables create \
-                            --project "$PROJECT_NAME" \
-                            --space "$SPACE_ID" \
-                            --name "BUILD_NUMBER" \
-                            --value "$BUILD_NUMBER" \
+ 
+                        # 4. Create a fresh BUILD_NUMBER variable
+                        echo "Creating BUILD_NUMBER = $BUILD_NUMBER"
+                        octopus project variables create \\
+                            --project "$PROJECT_NAME" \\
+                            --space "$SPACE_ID" \\
+                            --name "BUILD_NUMBER" \\
+                            --value "$BUILD_NUMBER" \\
                             --type text
                     '''
                 }
             }
         }
-
+ 
         stage('Create Release in Octopus') {
             when {
                 expression { env.GIT_BRANCH == 'origin/release' }
@@ -86,11 +83,10 @@ pipeline {
             steps {
                 withCredentials([string(credentialsId: 'octopus-api-key', variable: 'OCTOPUS_API_KEY')]) {
                     sh '''
-                        set -e
                         echo "Creating release for project: $PROJECT_NAME using BUILD_NUMBER: $BUILD_NUMBER"
-
-                        octopus release create \
-                            --project "$PROJECT_NAME" \
+ 
+                        octopus release create \\
+                            --project "$PROJECT_NAME" \\
                             --space "$SPACE_ID"
                     '''
                 }
