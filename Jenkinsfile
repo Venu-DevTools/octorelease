@@ -8,7 +8,7 @@ pipeline {
     }
 
     stages {
-      // dummy stage without any when condition
+      //  dummy stage without any when condition
           stage('Dummy Stage') {
             steps {
                  echo "BRANCH_NAME: ${env.GIT_BRANCH}"
