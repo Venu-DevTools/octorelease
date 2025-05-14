@@ -8,16 +8,15 @@ pipeline {
     }
 
     stages {
-      //   dummy  stage without any when condition 
-          stage('Dummy Stage') {
+        stage('Dummy Stage') {
             steps {
-                 echo "BRANCH_NAME: ${env.GIT_BRANCH}"
-                }
-             }
+                echo "BRANCH_NAME: ${env.GIT_BRANCH}"
+            }
+        }
 
         stage('Login to Octopus') {
             when {
-              expression { env.GIT_BRANCH == 'origin/release' }
+                expression { env.GIT_BRANCH == 'origin/release' }
             }
             steps {
                 withCredentials([string(credentialsId: 'octopus-api-key', variable: 'OCTOPUS_API_KEY')]) {
@@ -30,31 +29,27 @@ pipeline {
             }
         }
 
-        stage('Sync BUILD_NUMBER Variable') {
+        stage('Delete Existing BUILD_NUMBER Variable') {
             when {
-               expression { env.GIT_BRANCH == 'origin/release' }
+                expression { env.GIT_BRANCH == 'origin/release' }
             }
             steps {
                 withCredentials([string(credentialsId: 'octopus-api-key', variable: 'OCTOPUS_API_KEY')]) {
                     sh '''
                         set -e
 
-                        # Ensure jq is available
                         if ! command -v jq >/dev/null 2>&1; then
-                            echo "Error: jq is not installed. Please install jq on your Jenkins agent."
+                            echo "Error: jq is not installed."
                             exit 1
                         fi
 
-                        # 1. List all variables in JSON
                         VAR_JSON=$(octopus project variables list \
                             --project "$PROJECT_NAME" \
                             --space "$SPACE_ID" \
                             --output-format json)
 
-                        # 2. Extract IDs for all BUILD_NUMBER variables
                         VARIABLE_IDS=$(echo "$VAR_JSON" | jq -r '.[] | select(.Name == "BUILD_NUMBER") | .Id')
 
-                        # 3. Delete each found BUILD_NUMBER variable
                         if [ -n "$VARIABLE_IDS" ]; then
                             echo "Found existing BUILD_NUMBER variable(s):"
                             for ID in $VARIABLE_IDS; do
@@ -69,21 +64,29 @@ pipeline {
                         else
                             echo "No existing BUILD_NUMBER variable found."
                         fi
-
-                        # 4. Create a fresh BUILD_NUMBER variable
-                        echo "Creating BUILD_NUMBER = $BUILD_NUMBER"
-                        octopus project variables create \\
-                            --project "$PROJECT_NAME" \\
-                            --space "$SPACE_ID" \\
-                            --name "BUILD_NUMBER" \\
-                            --value "$BUILD_NUMBER" \\
-                            --type text
                     '''
                 }
             }
         }
 
-        
-        
+        stage('Create New BUILD_NUMBER Variable') {
+            when {
+                expression { env.GIT_BRANCH == 'origin/release' }
+            }
+            steps {
+                withCredentials([string(credentialsId: 'octopus-api-key', variable: 'OCTOPUS_API_KEY')]) {
+                    sh '''
+                        set -e
+                        echo "Creating BUILD_NUMBER = $BUILD_NUMBER"
+                        octopus project variables create \
+                            --project "$PROJECT_NAME" \
+                            --space "$SPACE_ID" \
+                            --name "BUILD_NUMBER" \
+                            --value "$BUILD_NUMBER" \
+                            --type text
+                    '''
+                }
+            }
+        }
     }
 }
