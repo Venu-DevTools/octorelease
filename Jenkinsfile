@@ -29,7 +29,7 @@ pipeline {
             }
         }
 
-        stage('Delete Existing BUILD_NUMBER Variable') {
+        stage('Reset BUILD_NUMBER Variable') {
             when {
                 expression { env.GIT_BRANCH == 'origin/release' }
             }
@@ -43,6 +43,7 @@ pipeline {
                             exit 1
                         fi
 
+                        echo "Fetching existing BUILD_NUMBER variables..."
                         VAR_JSON=$(octopus project variables list \
                             --project "$PROJECT_NAME" \
                             --space "$SPACE_ID" \
@@ -51,7 +52,7 @@ pipeline {
                         VARIABLE_IDS=$(echo "$VAR_JSON" | jq -r '.[] | select(.Name == "BUILD_NUMBER") | .Id')
 
                         if [ -n "$VARIABLE_IDS" ]; then
-                            echo "Found existing BUILD_NUMBER variable(s):"
+                            echo "Deleting existing BUILD_NUMBER variables..."
                             for ID in $VARIABLE_IDS; do
                                 echo " → deleting id=$ID"
                                 octopus project variables delete BUILD_NUMBER \
@@ -61,15 +62,24 @@ pipeline {
                                     --id "$ID" \
                                     --confirm
                             done
-                        else
-                            echo "No existing BUILD_NUMBER variable found."
+
+                            echo "Waiting for Octopus to release lock on variable set..."
+                            sleep 5
                         fi
+
+                        echo "Creating new BUILD_NUMBER = $BUILD_NUMBER"
+                        octopus project variables create \
+                            --project "$PROJECT_NAME" \
+                            --space "$SPACE_ID" \
+                            --name "BUILD_NUMBER" \
+                            --value "$BUILD_NUMBER" \
+                            --type text
                     '''
                 }
             }
         }
 
-        stage('Create New BUILD_NUMBER Variable') { 
+        stage('Create Release in Octopus') {
             when {
                 expression { env.GIT_BRANCH == 'origin/release' }
             }
@@ -77,13 +87,11 @@ pipeline {
                 withCredentials([string(credentialsId: 'octopus-api-key', variable: 'OCTOPUS_API_KEY')]) {
                     sh '''
                         set -e
-                        echo "Creating BUILD_NUMBER = $BUILD_NUMBER"
-                        octopus project variables create \
+                        echo "Creating release for project: $PROJECT_NAME using BUILD_NUMBER: $BUILD_NUMBER"
+
+                        octopus release create \
                             --project "$PROJECT_NAME" \
-                            --space "$SPACE_ID" \
-                            --name "BUILD_NUMBER" \
-                            --value "$BUILD_NUMBER" \
-                            --type text
+                            --space "$SPACE_ID"
                     '''
                 }
             }
