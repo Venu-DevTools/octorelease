@@ -69,7 +69,7 @@ pipeline {
             }
         }
 
-        stage('Create New BUILD_NUMBER Variable') {
+        stage('Create New BUILD_NUMBER Variable') { 
             when {
                 expression { env.GIT_BRANCH == 'origin/release' }
             }
