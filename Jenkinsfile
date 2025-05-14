@@ -4,7 +4,7 @@ pipeline {
     environment {
         OCTOPUS_SERVER = 'https://devtools.octopus.app'
         SPACE_ID       = 'Spaces-162'
-        PROJECT_NAME   = 'omega-alpha'
+        PROJECT_NAME   = 'omega-beta'
     }
  
     stages {
