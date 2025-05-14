@@ -17,7 +17,7 @@ pipeline {
                     sh """
                         octopus login \\
                             --server "$OCTOPUS_SERVER" \\
-                            --api-key "$OCTOPUS_API_KEY"
+                            --api-key "$OCTOPUS_API_KEY" 
                     """
                 }
             }
